@@ -13,8 +13,7 @@ sudo apt update && sudo apt upgrade -y
 
 # 2. Install prerequisites
 echo "[2/7] Installing prerequisites..."
-sudo apt install -y curl git python3.11 python3.11-venv python3-pip docker.io docker-compose nod
-js npm
+sudo apt install -y curl git python3.11 python3.11-venv python3-pip docker.io docker-compose nodejs npm
 
 # 3. Clone the forked repo
 echo "[3/7] Cloning MiroFish repo..."

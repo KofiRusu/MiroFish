@@ -33,13 +33,13 @@ BUILD_RESPONSE=$(curl -s -X POST "${BASE_URL}/build" \
   -H "Content-Type: application/json" \
   -d "{\"project_id\":\"${PROJECT_ID}\",\"chunk_size\":500,\"chunk_overlap\":50}")
 
-TASK_ID=$(echo "$BUILD_RESPONSE" | python3 -c "import sys,json; data=json.load(sys.stdin); print(data.get('task_id","ERROR"))")
+TASK_ID=$(echo "$BUILD_RESPONSE" | python3 -c "import sys,json; data=json.load(sys.stdin); print(data.get('task_id','ERROR'))" 2>/dev/null || echo "ERROR")
 
 echo "Graph build task ID: ${TASK_ID}"
 
 # Poll for completion
 while true; do
-  STATUS=$(curl -s "${BASE_URL}/task/${TASK_ID}" | python3 -c "import sys,json; data=json.load(sys.stdin); print(data.get('status','unknown'))")
+  STATUS=$(curl -s "${BASE_URL}/task/${TASK_ID}" | python3 -c "import sys,json; data=json.load(sys.stdin); d=data.get('data',data); print(d.get('status','unknown'))" 2>/dev/null || echo "unknown")
   echo "  Graph build status: ${STATUS}..."
   if [ "$STATUS" = "completed" ]; then
     echo "  Graph build completed!"
@@ -90,7 +90,7 @@ echo "Prep task ID: ${PREP_TASK}"
 while true; do
   STATUS=$(curl -s -X POST "${BASE_URL}/simulation/prepare/status" \
     -H "Content-Type: application/json" \
-    -d "{\"task_id\":\"${PREP_TASK}\"}" | python3 -c "import sys,json; data=json.load(sys.stdin); print(data.get('status','unknown'))" 2>/dev/null || echo "unknown")
+    -d "{\"task_id\":\"${PREP_TASK}\"}" | python3 -c "import sys,json; data=json.load(sys.stdin); d=data.get('data',data); print(d.get('status','unknown'))" 2>/dev/null || echo "unknown")
   echo "  Prep status: ${STATUS}..."
   if [ "$STATUS" = "ready" ] || [ "$STATUS" = "completed" ]; then
     echo "  Environment ready!"
@@ -151,7 +151,7 @@ while true; do
   STATUS=$(curl -s "${BASE_URL}/report/generate/status" \
     -X POST \
     -H "Content-Type: application/json" \
-    -d "{\"task_id\":\"${REPORT_TASK}\"}" | python3 -c "import sys,json; data=json.load(sys.stdin); print(data.get('status','unknown'))" 2>/dev/null || echo "unknown")
+    -d "{\"task_id\":\"${REPORT_TASK}\"}" | python3 -c "import sys,json; data=json.load(sys.stdin); d=data.get('data',data); print(d.get('status','unknown'))" 2>/dev/null || echo "unknown")
   echo "  Report status: ${STATUS}..."
   if [ "$STATUS" = "completed" ]; then
     echo "  Report generated!"
@@ -164,11 +164,9 @@ while true; do
 done
 
 # Download the report
-REPORT_DOWNLOAD=$(curl -s "${BASE_URL}/report/by-simulation/" \
-  -H "Content-Type: application/json" \
-  -d "{\"simulation_id\":\"${SIMULATION_ID}\"}")
+REPORT_DOWNLOAD=$(curl -s "${BASE_URL}/report/by-simulation/${SIMULATION_ID}")
 
-REPORT_ID=$(echo "$REPORT_DOWNLOAD" | python3 -c "import sys,json; data=json.load(sys.stdin); reports=data.get('data',[]); print(reports[0].get('report_id','ERROR') if reports else 'ERROR')" 2>/dev/null || echo "ERROR")
+REPORT_ID=$(echo "$REPORT_DOWNLOAD" | python3 -c "import sys,json; data=json.load(sys.stdin); report=data.get('data',{}); print(report.get('report_id','ERROR'))" 2>/dev/null || echo "ERROR")
 
 echo "Report ID: ${REPORT_ID}"
 curl -s "${BASE_URL}/report/${REPORT_ID}/download" -o "btc-prediction-report.md"
